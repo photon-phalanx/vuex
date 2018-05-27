@@ -39,6 +39,7 @@ export class Store {
     // bind commit and dispatch to self
     const store = this
     const { dispatch, commit } = this
+    // 强行要求dispatch和commit的调用的this一定是该类
     this.dispatch = function boundDispatch (type, payload) {
       return dispatch.call(store, type, payload)
     }
@@ -87,6 +88,7 @@ export class Store {
     } = unifyObjectStyle(_type, _payload, _options)
 
     const mutation = { type, payload }
+    // 校验mutation是否已经定义
     const entry = this._mutations[type]
     if (!entry) {
       if (process.env.NODE_ENV !== 'production') {
@@ -191,6 +193,7 @@ export class Store {
   }
 
   _withCommit (fn) {
+    // _committing用来判断是不是mutation的事件
     const committing = this._committing
     this._committing = true
     fn()
@@ -198,6 +201,7 @@ export class Store {
   }
 }
 
+// 值得学习的方法，return的函数是用来取消订阅的
 function genericSubscribe (fn, subs) {
   if (subs.indexOf(fn) < 0) {
     subs.push(fn)
@@ -279,9 +283,11 @@ function installModule (store, rootState, path, module, hot) {
 
   // set state
   if (!isRoot && !hot) {
+    // [1,2,3].slice(0, -1) => [1,2]
     const parentState = getNestedState(rootState, path.slice(0, -1))
     const moduleName = path[path.length - 1]
     store._withCommit(() => {
+      // 当前模块的state给父state中
       Vue.set(parentState, moduleName, module.state)
     })
   }
@@ -392,6 +398,9 @@ function makeLocalGetters (store, namespace) {
 function registerMutation (store, type, handler, local) {
   const entry = store._mutations[type] || (store._mutations[type] = [])
   entry.push(function wrappedMutationHandler (payload) {
+    // mutation使用的时候只传了payload，调用的时候给的参数 stage，payload
+    // this.$store.commit('a', b)
+    // a (state, payload) {}
     handler.call(store, local.state, payload)
   })
 }
@@ -446,12 +455,14 @@ function enableStrictMode (store) {
   }, { deep: true, sync: true })
 }
 
+// getNestedState({a: {b: 2}}, ['a', 'b'])  => 2
 function getNestedState (state, path) {
   return path.length
     ? path.reduce((state, key) => state[key], state)
     : state
 }
 
+// 对象形式转成普通形式
 function unifyObjectStyle (type, payload, options) {
   if (isObject(type) && type.type) {
     options = payload

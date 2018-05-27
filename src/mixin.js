@@ -19,6 +19,7 @@ export default function (Vue) {
    * Vuex init hook, injected into each instances init hooks list.
    */
 
+  // options里的东西是new Vue时候对象里的一些属性
   function vuexInit () {
     const options = this.$options
     // store injection
