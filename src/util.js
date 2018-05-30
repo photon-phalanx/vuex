@@ -57,6 +57,7 @@ export function deepCopy (obj, cache = []) {
 /**
  * forEach for object
  */
+// 对obj的每一项调用fn，参数为val，key
 export function forEachValue (obj, fn) {
   Object.keys(obj).forEach(key => fn(obj[key], key))
 }

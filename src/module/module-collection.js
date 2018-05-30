@@ -2,6 +2,7 @@ import Module from './module'
 import { assert, forEachValue } from '../util'
 
 export default class ModuleCollection {
+  // rawRootModule: vue实例的this.$options
   constructor (rawRootModule) {
     // register root module (Vuex.Store options)
     this.register([], rawRootModule, false)
@@ -25,15 +26,21 @@ export default class ModuleCollection {
     update([], this.root, rawRootModule)
   }
 
+  // 创建module并添加到指定位置
   register (path, rawModule, runtime = true) {
     if (process.env.NODE_ENV !== 'production') {
       assertRawModule(path, rawModule)
     }
 
+    // 注册module，防止污染
     const newModule = new Module(rawModule, runtime)
     if (path.length === 0) {
+      // 会标记根module
       this.root = newModule
     } else {
+      // 否则会根据path找到对应的位置添加进去
+      // [1,2,3].slice(0, -1) -> [1,2]
+      // module可以通过getChild找到子module，通过addChild添加module
       const parent = this.get(path.slice(0, -1))
       parent.addChild(path[path.length - 1], newModule)
     }
@@ -46,6 +53,7 @@ export default class ModuleCollection {
     }
   }
 
+  // 处于runtime:false 的不能被移除
   unregister (path) {
     const parent = this.get(path.slice(0, -1))
     const key = path[path.length - 1]
@@ -89,6 +97,7 @@ const functionAssert = {
   expected: 'function'
 }
 
+// function or {handler () {}}
 const objectAssert = {
   assert: value => typeof value === 'function' ||
     (typeof value === 'object' && typeof value.handler === 'function'),
@@ -102,8 +111,12 @@ const assertTypes = {
 }
 
 function assertRawModule (path, rawModule) {
+  // 检查getters，mutations，actions在Vue实例的this.$options上是否有定义
+  // getters和mutations必须是必须是函数， actions必须是函数或者带有handler的对象
   Object.keys(assertTypes).forEach(key => {
+    // 没有这一项就直接检查下一个
     if (!rawModule[key]) return
+    // 否则就按上述规则检查
 
     const assertOptions = assertTypes[key]
 
