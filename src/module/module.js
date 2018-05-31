@@ -2,6 +2,8 @@ import { forEachValue } from '../util'
 
 // Base data struct for store's module, package with some attribute and method
 export default class Module {
+  // 初始化了state，然后有一些父子关系的方法
+  // 只能从自己这里拿到子，不能找到父
   constructor (rawModule, runtime) {
     this.runtime = runtime
     // Store some children item

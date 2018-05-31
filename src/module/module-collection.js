@@ -2,7 +2,7 @@ import Module from './module'
 import { assert, forEachValue } from '../util'
 
 export default class ModuleCollection {
-  // rawRootModule: vue实例的this.$options
+  // rawRootModule: Store实例构造时候的传参
   constructor (rawRootModule) {
     // register root module (Vuex.Store options)
     this.register([], rawRootModule, false)
@@ -111,7 +111,7 @@ const assertTypes = {
 }
 
 function assertRawModule (path, rawModule) {
-  // 检查getters，mutations，actions在Vue实例的this.$options上是否有定义
+  // 检查getters，mutations，actions在store上是否有定义
   // getters和mutations必须是必须是函数， actions必须是函数或者带有handler的对象
   Object.keys(assertTypes).forEach(key => {
     // 没有这一项就直接检查下一个

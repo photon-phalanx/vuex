@@ -7,16 +7,34 @@
     <script src="https://unpkg.com/vuex@3.0.1/dist/vuex.js"></script>
 </head>
 <body>
-<div id="app"></div>
+<div id="app">
+    {{$store && $store.state.test1.count}}
+    {{$store && $store.state.test2.count}}
+</div>
 </body>
 <script>
   let store = new Vuex.Store({
-    state: {
-      count: 0
-    },
-    mutations: {
-      increment (state) {
-        state.count++
+    modules: {
+      test1: {
+        namespaced: true,
+        state: {
+          count: 0
+        },
+        mutations: {
+          increment (state) {
+            state.count++
+          }
+        }
+      },
+      test2: {
+        state: {
+          count: 0
+        },
+        mutations: {
+          increment (state) {
+            state.count++
+          }
+        }
       }
     }
   })

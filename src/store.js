@@ -31,6 +31,7 @@ export class Store {
     this._actionSubscribers = []
     this._mutations = Object.create(null)
     this._wrappedGetters = Object.create(null)
+    // moduleCollection负责管理module的层级和添加删除等
     this._modules = new ModuleCollection(options)
     this._modulesNamespaceMap = Object.create(null)
     this._subscribers = []
@@ -51,6 +52,8 @@ export class Store {
     this.strict = strict
 
     const state = this._modules.root.state
+
+    // 至此，在module-collections经历过递归循环后，module已经创建好，接下来要创造联系
 
     // init root module.
     // this also recursively registers all sub-modules
@@ -113,6 +116,9 @@ export class Store {
       )
     }
   }
+
+  // registerAction返回promise
+  // dispatch返回一个promise，因为有可能同时触发多个action，故用promise.all做包装，故registeraction时就需要是promise
 
   dispatch (_type, _payload) {
     // check object-style dispatch
@@ -226,6 +232,11 @@ function resetStore (store, hot) {
   resetStoreVM(store, state, hot)
 }
 
+// vuex最核心的部分！！！
+// 把getters包一层复制到computed对象中，这个对象会变成vm上的computed属性
+// vm new出来时，会寻找依赖，就将getter变成了响应式
+// 然后建立vm和store.getter的关系，当访问store.getter，就是去访问vm上的同名计算属性
+// 另外，state也放在了data上，可以做响应式
 function resetStoreVM (store, state, hot) {
   const oldVm = store._vm
 
@@ -245,6 +256,7 @@ function resetStoreVM (store, state, hot) {
   // use a Vue instance to store the state tree
   // suppress warnings just in case the user has added
   // some funky global mixins
+  // 笑死，还有这种临时关掉警告的用法！
   const silent = Vue.config.silent
   Vue.config.silent = true
   store._vm = new Vue({
@@ -292,6 +304,8 @@ function installModule (store, rootState, path, module, hot) {
     })
   }
 
+  // 创建该module的局部上下文
+  // 比如action里会用到，当然用到的时候不仅会用这个，还会用到全局的一些东西
   const local = module.context = makeLocalContext(store, namespace, path)
 
   module.forEachMutation((mutation, key) => {
@@ -319,15 +333,18 @@ function installModule (store, rootState, path, module, hot) {
  * make localized dispatch, commit, getters and state
  * if there is no namespace, just use root ones
  */
+// 主要作用就是处理namespace，如果没有namespace，就使用根上的
 function makeLocalContext (store, namespace, path) {
   const noNamespace = namespace === ''
 
   const local = {
     dispatch: noNamespace ? store.dispatch : (_type, _payload, _options) => {
+      // 转化对象形式的dispatch
       const args = unifyObjectStyle(_type, _payload, _options)
       const { payload, options } = args
       let { type } = args
 
+      // 如果有namespace，会加上
       if (!options || !options.root) {
         type = namespace + type
         if (process.env.NODE_ENV !== 'production' && !store._actions[type]) {
@@ -358,6 +375,7 @@ function makeLocalContext (store, namespace, path) {
 
   // getters and state object must be gotten lazily
   // because they will be changed by vm update
+  // 完成getters，另外getters和state都不给set方法，只能get
   Object.defineProperties(local, {
     getters: {
       get: noNamespace
@@ -396,11 +414,14 @@ function makeLocalGetters (store, namespace) {
 }
 
 function registerMutation (store, type, handler, local) {
+  // 如果2个模块都没有namespaced，并且都有一个叫做increment的mutation，那么就会在全局上注册2个increment
+  // 当调用this.$store.commit('increment')的时候，2个module里的都会触发
+  // 如果有namespaced，那么在这里注册的type上就有namespaced了，那就要commit test1/increment了
   const entry = store._mutations[type] || (store._mutations[type] = [])
   entry.push(function wrappedMutationHandler (payload) {
     // mutation使用的时候只传了payload，调用的时候给的参数 stage，payload
     // this.$store.commit('a', b)
-    // a (state, payload) {}
+    // 在mutation中声明为a (state, payload) {}
     handler.call(store, local.state, payload)
   })
 }
@@ -416,6 +437,7 @@ function registerAction (store, type, handler, local) {
       rootGetters: store.getters,
       rootState: store.state
     }, payload, cb)
+    // action一定返回promise
     if (!isPromise(res)) {
       res = Promise.resolve(res)
     }
@@ -430,6 +452,7 @@ function registerAction (store, type, handler, local) {
   })
 }
 
+// get的注册
 function registerGetter (store, type, rawGetter, local) {
   if (store._wrappedGetters[type]) {
     if (process.env.NODE_ENV !== 'production') {
